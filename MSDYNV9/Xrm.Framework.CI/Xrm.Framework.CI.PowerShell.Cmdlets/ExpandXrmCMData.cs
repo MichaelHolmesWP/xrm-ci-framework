@@ -34,6 +34,12 @@ namespace Xrm.Framework.CI.PowerShell.Cmdlets
         public string Folder { get; set; }
 
         /// <summary>
+        /// <para type="description">Splits the xml data into mutiple files per entity</para>
+        /// </summary>
+        [Parameter(Mandatory = false)]
+        public bool SplitDataXmlFile { get; set; }
+
+        /// <summary>
         /// <para type="description">More granular control over level to which the data.xml file is split. Options are Default (EntityLevel), None (do not expand), EntityLevel (a file per entity, unpacking to \UnpackedRoot\(entityname).xml, RecordLevel (a file per record, unpacking to \UnpackedRoot\(entityname)\(recordid).xml)</para>
         /// </summary>
         [Parameter(Mandatory = false)]
@@ -68,7 +74,7 @@ namespace Xrm.Framework.CI.PowerShell.Cmdlets
 
             CmExpandTypeEnum splitDataXmlFileLevelType = (CmExpandTypeEnum)Enum.Parse(typeof(CmExpandTypeEnum), SplitDataXmlFileLevel);
             
-            if (splitDataXmlFileLevelType != CmExpandTypeEnum.None)
+            if (SplitDataXmlFile || splitDataXmlFileLevelType != CmExpandTypeEnum.None)
             {
                 manager.SplitData(Folder, splitDataXmlFileLevelType);
             }

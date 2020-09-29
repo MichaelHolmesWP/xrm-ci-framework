@@ -29,6 +29,12 @@ namespace Xrm.Framework.CI.PowerShell.Cmdlets
         public string Folder { get; set; }
 
         /// <summary>
+        /// <para type="description">Combines the xml data entity files into single data file</para>
+        /// </summary>
+        [Parameter(Mandatory = false)]
+        public bool CombineDataXmlFile { get; set; }
+
+        /// <summary>
         /// <para type="description">More granular control over level to which the data.xml file is merged. Options are Default (EntityLevel), None (do not perform any merging), EntityLevel (a file per entity, expecting \unpackedroot\(entityname).xml), RecordLevel (a file per record, expecting \UnpackedRoot\(entityname)\(recordid).xml. Should match the granular level of the <see cref="ExpandXrmCmData"/> call used to generate it</para>
         /// </summary>
         [Parameter(Mandatory = false)]
@@ -48,9 +54,9 @@ namespace Xrm.Framework.CI.PowerShell.Cmdlets
 
             ConfigurationMigrationManager manager = new ConfigurationMigrationManager(Logger);
 
-            var combineDataXmlFileLevelType = (CmExpandTypeEnum)Enum.Parse(typeof(CmExpandTypeEnum), CombineDataXmlFileLevel);
+            CmExpandTypeEnum combineDataXmlFileLevelType = (CmExpandTypeEnum)Enum.Parse(typeof(CmExpandTypeEnum), CombineDataXmlFileLevel);
 
-            if (combineDataXmlFileLevelType != CmExpandTypeEnum.None)
+            if (CombineDataXmlFile || combineDataXmlFileLevelType != CmExpandTypeEnum.None)
             {
                 string tempDirectory = manager.CombineData(Folder, combineDataXmlFileLevelType);
                 manager.CompressData(tempDirectory, DataZip);

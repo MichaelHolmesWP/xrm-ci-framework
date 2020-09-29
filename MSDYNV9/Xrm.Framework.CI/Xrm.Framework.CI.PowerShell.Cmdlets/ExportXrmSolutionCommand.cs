@@ -4,6 +4,7 @@ using System.Linq;
 using System.Management.Automation;
 using System.Text;
 using Microsoft.Crm.Sdk.Messages;
+using Xrm.Framework.CI.Common;
 using Xrm.Framework.CI.Common.Entities;
 using Xrm.Framework.CI.PowerShell.Cmdlets.Common;
 
@@ -121,9 +122,29 @@ namespace Xrm.Framework.CI.PowerShell.Cmdlets
         [Parameter(Mandatory = false)]
         public bool ExportSales { get; set; }
 
+        /// <summary>
+        /// <para type="description">Specify whether to import the solution asynchronously using ExecuteAsyncRequest</para>
+        /// </summary>
+        [Parameter(Mandatory = false)]
+        public bool ExportAsync { get; set; }
+
+        /// <summary>
+        /// <para type="description">The sleep interval between checks on the import progress. Default = 15 seconds</para>
+        /// </summary>
+        [Parameter(Mandatory = false)]
+        public int SleepInterval { get; set; }
+
+        /// <summary>
+        /// <para type="description">Specify the timeout duration for waiting on async imports to complete. Default = 15 minutes</para>
+        /// </summary>
+        [Parameter(Mandatory = false)]
+        public int AsyncWaitTimeout { get; set; }
+
         public ExportXrmSolutionCommand()
         {
             IncludeVersionInName = false;
+            SleepInterval = 15;
+            AsyncWaitTimeout = 15 * 60;
         }
 
         #endregion
@@ -134,40 +155,17 @@ namespace Xrm.Framework.CI.PowerShell.Cmdlets
         {
             base.ProcessRecord();
 
-            base.WriteVerbose(string.Format("Exporting Solution: {0}", UniqueSolutionName));
+            Logger.LogVerbose("Entering XrmExportSolution");
 
-            var solutionFile = new StringBuilder();
-            Solution solution;
+            XrmConnectionManager xrmConnection = new XrmConnectionManager(
+                Logger);
 
-            using (var context = new CIContext(OrganizationService))
-            {
-                var query = from s in context.SolutionSet
-                            where s.UniqueName == UniqueSolutionName
-                            select s;
+            SolutionManager solutionManager = new SolutionManager(
+                Logger,
+                OrganizationService,
+                null);
 
-                solution = query.FirstOrDefault();
-            }
-
-            if (solution == null)
-            {
-                throw new Exception(string.Format("Solution {0} could not be found", UniqueSolutionName));
-            }
-            solutionFile.Append(UniqueSolutionName);
-
-            if (IncludeVersionInName)
-            {
-                solutionFile.Append("_");
-                solutionFile.Append(solution.Version.Replace(".", "_"));
-            }
-
-            if (Managed)
-            {
-                solutionFile.Append("_managed");
-            }
-
-            solutionFile.Append(".zip");
-
-            var exportSolutionRequest = new ExportSolutionRequest
+            SolutionExportOptions options = new SolutionExportOptions
             {
                 Managed = Managed,
                 SolutionName = UniqueSolutionName,
@@ -182,15 +180,20 @@ namespace Xrm.Framework.CI.PowerShell.Cmdlets
                 ExportRelationshipRoles = ExportRelationshipRoles,
                 ExportSales = ExportSales,
                 TargetVersion = TargetVersion,
-                ExportExternalApplications = ExportExternalApplications
+                ExportExternalApplications = ExportExternalApplications,
+                IncludeVersionInName = IncludeVersionInName,
+                ExportAsync = ExportAsync,
+                AsyncWaitTimeout = AsyncWaitTimeout,
+                SleepInterval = SleepInterval
             };
 
-            var exportSolutionResponse = OrganizationService.Execute(exportSolutionRequest) as ExportSolutionResponse;
+            string solutionFile = solutionManager.ExportSolution(
+                OutputFolder,
+                options);
 
-            string solutionFilePath = Path.Combine(OutputFolder, solutionFile.ToString());
-            File.WriteAllBytes(solutionFilePath, exportSolutionResponse.ExportSolutionFile);
+            base.WriteObject(solutionFile);
 
-            base.WriteObject(solutionFile.ToString());
+            Logger.LogVerbose("Leaving XrmExportSolution");
         }
 
         #endregion
